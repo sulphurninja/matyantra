@@ -2,39 +2,44 @@
 // Matches the mobile app's csvImport.ts field mappings
 const fieldMappings: Record<string, string[]> = {
   // Assembly/Ward number
-  serialNo: ['ac_no', 'slnoinpart', 'serial_no', 'serial number'],
-  partNo: ['part_no', 'part', 'part number', 'part_number', 'partno'],
-  sectionNo: ['section_no', 'section', 'section number', 'section_number', 'sectionno'],
-  
+  serialNo: ['ac_no', 'slnoinpart', 'serial_no', 'serial number', 'sno'],
+  partNo: ['part_no', 'part', 'part number', 'part_number', 'partno', 'ac_part_no'],
+  sectionNo: ['section_no', 'section', 'section number', 'section_number', 'sectionno', 'ac_part_sno'],
+
   // House/Address
-  houseNo: ['c_house_no', 'house_no', 'house number', 'house_number'],
-  
+  houseNo: ['c_house_no', 'house_no', 'house number', 'house_number', 'house no'],
+
+  // Name fields - NEW: Support for VOTER NAME_ENG column
+  nameEnglish: ['voter name_eng', 'voter_name_eng', 'name_eng', 'name_english', 'english name'],
+  fullName: ['voter name', 'voter_name', 'name'],
+
   // Name fields - English (separate first and last) - PRIORITY: exact matches first
-  firstName: ['fm_name_en', 'first name', 'firstname', 'first_name', 'fm_nm_en', 'firstname_en'],
-  lastName: ['lastname_en', 'last name', 'lastname', 'last_name', 'l_nm_en'],
-  
+  firstName: ['fm_name_en', 'first name', 'firstname', 'first_name', 'fm_nm_en', 'firstname_en', 'voter firstname'],
+  lastName: ['lastname_en', 'last name', 'lastname', 'last_name', 'l_nm_en', 'voter lastname'],
+
   // Name fields - Regional (Marathi/Hindi)
   firstNameMarathi: ['fm_name_v1', 'firstname_marathi', 'first_name_marathi', 'fm_nm_v1'],
   lastNameMarathi: ['lastname_v1', 'lastname_marathi', 'last_name_marathi', 'l_nm_v1'],
-  
+
   // Relation fields
   relation: ['rln_type', 'relation', 'relationship'],
+  relativeFullName: ['relative name_eng', 'relative_name_eng'],
   relativeFirstName: ['rln_fm_nm_en', 'relative_first_name', 'relative first name'],
   relativeLastName: ['rln_l_nm_en', 'relative_last_name', 'relative last name'],
   relativeFirstNameMarathi: ['rln_fm_nm_v1', 'relative_first_name_marathi'],
   relativeLastNameMarathi: ['rln_l_nm_v1', 'relative_last_name_marathi'],
-  
+
   // Voter ID
-  voterId: ['epic_no', 'voter_id', 'epic number', 'voterid'],
-  
+  voterId: ['epic_no', 'voter_id', 'epic number', 'voterid', 'epic no'],
+
   // Status
   status: ['status_type', 'status'],
-  
+
   // Demographics
   gender: ['gender', 'लिंग', 'sex'],
   age: ['age', 'उम्र', 'वय', 'age_years'],
-  mobileNo: ['mobile_no', 'mobile', 'मोबाइल', 'mobile number', 'mobile_number', 'phone', 'contact'],
-  
+  mobileNo: ['mobile_no', 'mobile', 'मोबाइल', 'mobile number', 'mobile_number', 'phone', 'contact', 'mobile no'],
+
   // Address fields (optional)
   address: ['address', 'पता', 'पत्ता', 'full address', 'voter address'],
   area: ['area', 'क्षेत्र', 'ward', 'assembly'],
@@ -50,7 +55,7 @@ const normalizeHeader = (header: string): string => {
 
 const findFieldMapping = (header: string): string | null => {
   const normalized = normalizeHeader(header);
-  
+
   // Try exact match first (most specific)
   for (const [field, variations] of Object.entries(fieldMappings)) {
     for (const variation of variations) {
@@ -60,7 +65,7 @@ const findFieldMapping = (header: string): string | null => {
       }
     }
   }
-  
+
   // Then try contains match
   for (const [field, variations] of Object.entries(fieldMappings)) {
     for (const variation of variations) {
@@ -70,7 +75,7 @@ const findFieldMapping = (header: string): string | null => {
       }
     }
   }
-  
+
   return null;
 };
 
@@ -82,25 +87,28 @@ const parseAge = (value: any): number | undefined => {
 
 const parseGender = (value: any): string | undefined => {
   if (!value) return undefined;
-  
-  const str = String(value).toLowerCase().trim();
-  
-  if (str.includes('m') || str.includes('male') || str.includes('पुरुष')) {
-    return 'Male';
+
+  const str = String(value).trim().toUpperCase();
+
+  // Keep raw values M/F as-is for consistency with CSV
+  if (str === 'M' || str === 'MALE' || str.includes('पुरुष')) {
+    return 'M';
   }
-  if (str.includes('f') || str.includes('female') || str.includes('महिला') || str.includes('स्त्री')) {
-    return 'Female';
+  if (str === 'F' || str === 'FEMALE' || str.includes('महिला') || str.includes('स्त्री')) {
+    return 'F';
   }
-  if (str.includes('o') || str.includes('other') || str.includes('इतर')) {
-    return 'Other';
+  if (str === 'O' || str.includes('OTHER') || str.includes('इतर')) {
+    return 'O';
   }
-  
+
   return String(value).trim();
 };
 
 export interface ParsedVoter {
   userId: any;
   name: string;
+  nameEnglish?: string;
+  nameMarathi?: string;
   age?: number;
   gender?: string;
   address?: string;
@@ -117,21 +125,20 @@ export interface ParsedVoter {
   relation?: string;
   status?: string;
   relativeName?: string;
-  nameMarathi?: string;
 }
 
 // Helper to check if a value is valid (not empty, dash, comma, etc.)
 const isValidValue = (val: any): boolean => {
   if (!val) return false;
   const str = String(val).trim();
-  return str !== '' && 
-         str !== '-' && 
-         str !== '--' && 
-         str !== '_' && 
-         str !== ',' && 
-         str !== 'null' && 
-         str !== 'undefined' &&
-         str.length > 0;
+  return str !== '' &&
+    str !== '-' &&
+    str !== '--' &&
+    str !== '_' &&
+    str !== ',' &&
+    str !== 'null' &&
+    str !== 'undefined' &&
+    str.length > 0;
 };
 
 export function parseCSVRows(data: any[], userId: any): ParsedVoter[] {
@@ -142,9 +149,9 @@ export function parseCSVRows(data: any[], userId: any): ParsedVoter[] {
   // Get headers from first row
   const firstRow = data[0];
   const headers = Object.keys(firstRow);
-  
+
   console.log('CSV Headers found:', headers);
-  
+
   // Create header mapping
   const headerMapping: Record<string, string> = {};
   headers.forEach(header => {
@@ -169,7 +176,7 @@ export function parseCSVRows(data: any[], userId: any): ParsedVoter[] {
     // Map fields using header mapping
     Object.entries(row).forEach(([header, value]) => {
       if (!isValidValue(value)) return;
-      
+
       const field = headerMapping[header];
       if (!field) return;
 
@@ -191,6 +198,12 @@ export function parseCSVRows(data: any[], userId: any): ParsedVoter[] {
       } else if (field === 'sectionNo') {
         const num = parseAge(value);
         voter.section = num !== undefined ? String(num) : stringValue;
+      } else if (field === 'nameEnglish') {
+        // Store English name directly
+        voter.nameEnglish = stringValue;
+      } else if (field === 'fullName') {
+        // Store full name (Marathi) directly
+        firstNameMarathi = stringValue;
       } else if (field === 'firstName') {
         firstName = stringValue;
       } else if (field === 'lastName') {
@@ -199,6 +212,8 @@ export function parseCSVRows(data: any[], userId: any): ParsedVoter[] {
         firstNameMarathi = stringValue;
       } else if (field === 'lastNameMarathi') {
         lastNameMarathi = stringValue;
+      } else if (field === 'relativeFullName') {
+        voter.relativeName = stringValue;
       } else if (field === 'relativeFirstName') {
         relFirstName = stringValue;
       } else if (field === 'relativeLastName') {
@@ -242,7 +257,7 @@ export function parseCSVRows(data: any[], userId: any): ParsedVoter[] {
     // Combine first and last names, filtering out empty values (exactly like mobile app)
     const fullName = [firstName, lastName].filter(n => n && n !== '-').join(' ').trim();
     voter.name = fullName || `Unknown_${index + 1}`;
-    
+
     // Combine Marathi names
     const fullNameMarathi = [firstNameMarathi, lastNameMarathi].filter(n => n && n !== '-').join(' ').trim();
     if (fullNameMarathi) {

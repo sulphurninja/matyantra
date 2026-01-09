@@ -3,6 +3,8 @@ import mongoose, { Document, Schema, Types } from 'mongoose'
 export interface IVoter extends Document {
   userId: Types.ObjectId
   name: string
+  nameEnglish?: string
+  nameMarathi?: string
   age?: number
   gender?: string
   address?: string
@@ -19,7 +21,6 @@ export interface IVoter extends Document {
   relation?: string
   status?: string
   relativeName?: string
-  nameMarathi?: string
   isDead?: boolean
   hasVoted?: boolean
   dob?: Date
@@ -96,6 +97,9 @@ const VoterSchema = new Schema<IVoter>(
       type: String,
     },
     nameMarathi: {
+      type: String,
+    },
+    nameEnglish: {
       type: String,
     },
     isDead: {

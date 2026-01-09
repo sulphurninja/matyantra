@@ -60,6 +60,8 @@ export async function GET(request: NextRequest) {
       voters: voters.map((v) => ({
         id: v._id.toString(),
         name: v.name,
+        nameEnglish: v.nameEnglish,
+        nameMarathi: v.nameMarathi,
         age: v.age,
         gender: v.gender,
         address: v.address,
@@ -76,7 +78,6 @@ export async function GET(request: NextRequest) {
         relation: v.relation,
         status: v.status,
         relativeName: v.relativeName,
-        nameMarathi: v.nameMarathi,
         isDead: v.isDead,
         hasVoted: v.hasVoted,
         dob: v.dob,
