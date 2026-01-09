@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     const text = await file.text()
 
     // Parse CSV
-    return new Promise((resolve) => {
+    return new Promise<NextResponse>((resolve) => {
       Papa.parse(text, {
         header: true,
         skipEmptyLines: true,
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
           try {
             console.log(`CSV parsed: ${results.data.length} rows`)
             console.log('Sample row:', results.data[0])
-            
+
             if (!results.data || results.data.length === 0) {
               resolve(
                 NextResponse.json(
